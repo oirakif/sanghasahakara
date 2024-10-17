@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types" // adjust this to where your custom.d.ts is located
+    ]
+  },
+  "include": [
+    "pkg/**/*",
+    "types/**/*" // include your types folder if necessary
+  ]
+}
