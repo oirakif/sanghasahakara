@@ -2,16 +2,19 @@
 import { Request, Router, Response } from 'express';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { JWTUtils } from '../../../utils/utils';
 
 class GoogleOAuthHTTPHandler {
   clientID: string;
   clientSecret: string;
   callbackURL: string;
+  jwtUtils: JWTUtils;
 
-  constructor(clientID: string, clientSecret: string, callbackURL: string) {
+  constructor(clientID: string, clientSecret: string, callbackURL: string, jwtUtils: JWTUtils) {
     this.clientID = clientID;
     this.clientSecret = clientSecret;
     this.callbackURL = callbackURL;
+    this.jwtUtils = jwtUtils;
   }
 
   private initializePassport() {
@@ -21,9 +24,7 @@ class GoogleOAuthHTTPHandler {
       callbackURL: this.callbackURL
     }, async (accessToken, refreshToken, profile, done) => {
       const user: Express.User = {
-        id: profile.id,
-        email: profile.emails?.[0].value,
-        displayName: profile.displayName
+        id: 0
       };
       done(null, user)
     }));
@@ -34,12 +35,13 @@ class GoogleOAuthHTTPHandler {
     });
 
     // Deserialize user from session
-    passport.deserializeUser((id: string, done) => {
+    passport.deserializeUser((id: number, done) => {
       // Here you can fetch the user from the database by ID
+      const token = this.jwtUtils.GenerateToken({ id, account_type: 'GOOGLE' }, '1d')
       const user: Express.User = {
         id,
-        email: "user@example.com", // Retrieve email from DB if needed
-        displayName: "User Name"
+        accountType: 'GOOGLE',
+        token
       };
       done(null, user); // Pass the user object
     });
@@ -54,7 +56,8 @@ class GoogleOAuthHTTPHandler {
   }
 
   private handleOAuthGoogleLogin(req: Request, res: Response) {
-    res.redirect('/user/profile');
+
+    res.redirect(`/user/profile?access_token=${req.user?.token}`);
   }
 }
 

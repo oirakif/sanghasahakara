@@ -11,7 +11,7 @@ class UserRepository {
     async GetUsersList(filterQuery: GetUsersFilterQuery): Promise<[User[], string]> {
         const args: any[] = []
         const conditions: string[] = []
-        let query = `SELECT id,email,is_email_verified,status FROM users u`
+        let query = `SELECT id,email,is_email_verified,account_type,status,created_at,updated_at FROM users u`
         if (filterQuery.id) {
             conditions.push(`id = $${conditions.length + 1}`);
             args.push(filterQuery.id);
@@ -60,12 +60,13 @@ class UserRepository {
 
     async InsertUser(newUser: User): Promise<[number, string]> {
         const args: any[] = []
-        let query = `INSERT INTO users (email,password_hash,display_name,is_email_verified,status,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id;`
+        let query = `INSERT INTO users (email,password_hash,display_name,is_email_verified,account_type,status,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id;`
         args.push(
             newUser.email,
             newUser.password_hash,
             newUser.display_name,
             newUser.is_email_verified,
+            newUser.account_type,
             newUser.status,
             newUser.created_at,
             newUser.updated_at,
