@@ -8,7 +8,12 @@ import UserHTTPHandler from './user/handler/http_handler';
 import GoogleOAuthHTTPHandler from './auth/google/handler/http_handler';
 import cors from 'cors';
 import nodemailer from 'nodemailer';
-import { JWTUtils } from './utils/utils'
+import { DBUtils, JWTUtils } from './utils/utils'
+import MainAuthHTTPHandler from './auth/main/handler/http_handler';
+import bodyParser from 'body-parser'
+import MainAuthDomain from './auth/main/domain/domain';
+import EmailRepository from './email/repository/repository';
+import UsersEmailVerificationRepository from './users-email-verification/repository/repository';
 
 dotenv.config();
 
@@ -22,6 +27,15 @@ const dbClient = new Pool(
   }
 );
 
+dbClient.connect(async (err) => {
+  if (err) {
+    console.error('Failed to connect to the database:', err);
+    await dbClient.end();
+    console.log('PostgreSQL client disconnected');
+    process.exit(1);
+  }
+})
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -30,8 +44,26 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-const jwtUtils = new JWTUtils(process.env.JWT_SECRET as string)
-const userRepository = new UserRepository(dbClient)
+// initiate utils
+const jwtUtils = new JWTUtils(process.env.JWT_SECRET as string);
+const dbUtils = new DBUtils(dbClient);
+
+
+// initiate repositories
+const userRepository = new UserRepository(dbClient);
+const userEmailVerificationRepository = new UsersEmailVerificationRepository(dbClient);
+const emailRepository = new EmailRepository(transporter);
+
+// initiate domains
+const mainAuthDomain = new MainAuthDomain(
+  userRepository,
+  emailRepository,
+  userEmailVerificationRepository,
+  jwtUtils,
+  dbUtils,
+  process.env.MAIN_SERVICE_URL as string,
+);
+
 
 const app = express();
 app.use(cors({
@@ -39,6 +71,9 @@ app.use(cors({
   credentials: true
 }));
 
+// bodyparser x-form, enable it if needed
+// app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
 app.use(session({
   secret: 'your-session-secret',
   resave: false,
@@ -48,21 +83,19 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-const googleOAuthHTTPHandler = new
-  GoogleOAuthHTTPHandler(
-    process.env.GOOGLE_CLIENT_ID as string,
-    process.env.GOOGLE_CLIENT_SECRET as string,
-    process.env.GOOGLE_OAUTH_CALLBACK_URL as string
-  );
-
-// app.use('/auth', authRoutes);
-
 
 app.use(
   '/auth',
-  googleOAuthHTTPHandler.initializeRoutes()
+  new GoogleOAuthHTTPHandler(
+    process.env.GOOGLE_CLIENT_ID as string,
+    process.env.GOOGLE_CLIENT_SECRET as string,
+    process.env.GOOGLE_OAUTH_CALLBACK_URL as string).
+    InitializeRoutes(),
+
+  new MainAuthHTTPHandler(mainAuthDomain).
+    InitializeRoutes()
 );
-app.use('/user', new UserHTTPHandler().initiateRoutes())
+app.use('/user', new UserHTTPHandler().InitiateRoutes())
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

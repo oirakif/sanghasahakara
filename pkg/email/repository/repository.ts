@@ -7,27 +7,19 @@ class EmailRepository {
         this.transporter = transporter;
     }
 
-    async sendEmail(from: string, targetEmails: string[], subject: string, htmlContent: string) {
-        const emailPromises = targetEmails.map((email) => {
-            const mailOptions = {
-                from: from,
-                to: email,
-                subject: subject,
-                html: htmlContent,
-            };
+    public async SendEmail(from: string, targetEmails: string[], subject: string, htmlContent: string) {
+        const mailOptions = {
+            from: from,
+            to: targetEmails.join(','),
+            subject: subject,
+            html: htmlContent,
+        };
 
+        try {
             return this.transporter.sendMail(mailOptions);
-        });
-
-        const results = await Promise.allSettled(emailPromises);
-
-        // Process the results
-        results.forEach((result, index) => {
-            if (result.status !== 'fulfilled') {
-                console.error(`Failed to send email to ${targetEmails[index]}:`, result.reason.message);
-            }
-        });
-
+        } catch (error) {
+            console.error(error)
+        }
     }
 }
 

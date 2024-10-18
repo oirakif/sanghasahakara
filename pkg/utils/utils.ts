@@ -1,5 +1,8 @@
-import jwt from 'jsonwebtoken';
-
+import jwt, { JwtPayload } from 'jsonwebtoken';
+import crypto from 'crypto';
+import { Request, Response, NextFunction } from 'express'
+import { User } from '../user/model/model';
+import { Pool } from 'pg';
 
 class JWTUtils {
     secret: string;
@@ -7,13 +10,68 @@ class JWTUtils {
         this.secret = secret;
     }
 
-    generateToken(payload: object, expiryTime: string) {
+    public GenerateToken(payload: object, expiryTime: string) {
         const token = jwt.sign(payload, this.secret, {
             expiresIn: expiryTime,
         });
         return token;
     }
+    public AuthenticateJWT(req: Request, res: Response, next: NextFunction) {
+        const token = req.headers.authorization?.split(' ')[1]; // Extract token from the Authorization header
 
+        if (!token) {
+            return res.status(401).json({ message: 'Missing access token' });
+        }
+
+        // Verify the JWT token
+        jwt.verify(token, this.secret, (err, user) => {
+            if (err) {
+                return res.status(403).json({ message: 'Invalid token' });
+            }
+
+            // Attach user data to request object
+            req.user = user as User;
+            next();
+        });
+    }
 }
 
-export { JWTUtils } 
+
+class DBUtils {
+    dbClient: Pool;
+    constructor(dbClient: Pool) {
+        this.dbClient = dbClient;
+    }
+
+    public async InitTx(): Promise<string> {
+        try {
+            await this.dbClient.query('BEGIN');
+            return '';
+        } catch (error) {
+            return error as string;
+        }
+
+    }
+    public async CommitTx(): Promise<string> {
+        try {
+            await this.dbClient.query('COMMIT');
+            return '';
+        } catch (error) {
+            return error as string;
+        }
+    }
+    public async RollbackTx(): Promise<string> {
+        try {
+            await this.dbClient.query('ROLLBACK');
+            return '';
+        } catch (error) {
+            return error as string;
+        }
+    }
+}
+
+
+function SHA256hash(plaintext: string): string {
+    return crypto.createHash('sha256').update(plaintext).digest('hex');
+}
+export { JWTUtils, DBUtils, SHA256hash } 

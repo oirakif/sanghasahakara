@@ -5,7 +5,7 @@ class UserHTTPHandler {
 
   }
 
-  initiateRoutes(): Router {
+  InitiateRoutes(): Router {
     const router = Router();
     router.get('/profile', (req, res) => {
       if (req.isAuthenticated()) {
