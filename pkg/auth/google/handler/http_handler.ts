@@ -45,7 +45,7 @@ class GoogleOAuthHTTPHandler {
     });
   }
 
-  initializeRoutes() {
+  public InitializeRoutes() {
     this.initializePassport();
     const router = Router();
     router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }),);
@@ -53,7 +53,7 @@ class GoogleOAuthHTTPHandler {
     return router;
   }
 
-  handleOAuthGoogleLogin(req: Request, res: Response) {
+  private handleOAuthGoogleLogin(req: Request, res: Response) {
     res.redirect('/user/profile');
   }
 }
