@@ -1,4 +1,4 @@
-interface GetUsersFilterQuery {
+interface UserFilterQuery {
     id?: number;
     email?: string;
     password_hash?: string;
@@ -6,8 +6,8 @@ interface GetUsersFilterQuery {
     is_verified?: boolean;
     account_type?: 'GOOGLE' | 'FACEBOOK' | 'MAIN';
     status?: 'ACTIVE' | 'DISABLED' | 'BANNED' | 'DELETED';
-    limit: number;
-    offset: number;
+    limit?: number;
+    offset?: number;
 }
 
 interface User {
@@ -23,6 +23,6 @@ interface User {
 }
 
 export {
-    GetUsersFilterQuery,
+    UserFilterQuery,
     User
 }

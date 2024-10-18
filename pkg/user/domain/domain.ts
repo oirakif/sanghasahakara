@@ -1,5 +1,5 @@
 import UserRepository from '../repository/repository';
-import { GetUsersFilterQuery } from '../model/model';
+import { UserFilterQuery } from '../model/model';
 import { DBUtils } from '../../utils/utils'
 import { ErrorResponse, SuccessResponse } from '../../wrapper/wrapper'
 
@@ -14,7 +14,7 @@ class UserDomain {
     }
 
     public async GetUser(id: number): Promise<[SuccessResponse, ErrorResponse]> {
-        const filterQuery: GetUsersFilterQuery = <GetUsersFilterQuery>{
+        const filterQuery: UserFilterQuery = <UserFilterQuery>{
             id,
             limit: 1,
             offset: 1

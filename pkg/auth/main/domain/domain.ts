@@ -1,10 +1,9 @@
 import UserRepository from '../../../user/repository/repository';
-import { GetUsersFilterQuery, User } from '../../../user/model/model';
+import { UserFilterQuery, User } from '../../../user/model/model';
 import { DBUtils, JWTUtils, SHA256hash } from '../../../utils/utils'
 import { ErrorResponse, SuccessResponse } from '../../../wrapper/wrapper'
 import EmailRepository from '../../../email/repository/repository';
 import UsersEmailVerificationRepository from '../../../users-email-verification/repository/repository';
-import { Pool } from 'pg';
 import moment from 'moment';
 import { UsersEmailVerification } from '../../../users-email-verification/model/model';
 
@@ -32,7 +31,7 @@ class MainAuthDomain {
 
     public async LoginUser(email: string, password: string): Promise<[SuccessResponse, ErrorResponse]> {
         const hashedPassword = SHA256hash(password)
-        const filterQuery: GetUsersFilterQuery = <GetUsersFilterQuery>{
+        const filterQuery: UserFilterQuery = <UserFilterQuery>{
             email,
             password_hash: hashedPassword,
             limit: 1,
@@ -61,10 +60,9 @@ class MainAuthDomain {
         }, <ErrorResponse>{}]
     }
 
-
     public async RegisterUser(email: string, password: string, displayName: string): Promise<[SuccessResponse, ErrorResponse]> {
         const hashedPassword = SHA256hash(password)
-        const filterQuery: GetUsersFilterQuery = <GetUsersFilterQuery>{
+        const filterQuery: UserFilterQuery = <UserFilterQuery>{
             email,
             limit: 1,
             offset: 1
@@ -84,7 +82,7 @@ class MainAuthDomain {
             }]
         }
 
-        const currentTimestamp = new Date()
+        const currentTimestamp = new Date();
         const newUser: User = <User>{
             email,
             password_hash: hashedPassword,
@@ -104,8 +102,9 @@ class MainAuthDomain {
             }
             const token = this.jwtUtils.GenerateToken({ id: newUserID, account_type: 'MAIN' }, '30m')
 
-            var expiresAt = moment(currentTimestamp).add(30, 'm').toDate();
+            var expiresAt: Date = moment(currentTimestamp).add(30, 'm').toDate();
             const userEmailVerification: UsersEmailVerification = <UsersEmailVerification>{
+                id: newUserID,
                 token,
                 user_id: newUserID,
                 expires_at: expiresAt,
@@ -145,6 +144,62 @@ class MainAuthDomain {
                 }]
         }
 
+    }
+
+
+    public async ResetPassword(id: number, oldPassword: string, newPassword: string): Promise<[SuccessResponse, ErrorResponse]> {
+        const hashedOldPassword = SHA256hash(oldPassword)
+        const filterQuery: UserFilterQuery = <UserFilterQuery>{
+            id,
+            password_hash: hashedOldPassword,
+            limit: 1,
+            offset: 1
+        }
+        const [retrievedUser, getErr] = await this.userRepository.GetUsersList(filterQuery)
+        if (getErr != '') {
+            return [<SuccessResponse>{}, <ErrorResponse>{
+                statusCode: 500,
+                message: 'error on validating user'
+            }]
+        }
+
+        if (retrievedUser.length === 0) {
+            return [<SuccessResponse>{}, <ErrorResponse>{
+                statusCode: 404,
+                message: 'incorrect password'
+            }]
+        }
+
+        const hashedNewPassword = SHA256hash(newPassword)
+
+        const currentTimestamp = new Date();
+        const targetUser = retrievedUser[0];
+        targetUser.password_hash = hashedNewPassword;
+        targetUser.updated_at = currentTimestamp;
+
+        try {
+            await this.dbUtils.InitTx();
+            const updateErr = await this.userRepository.UpdateUser(filterQuery, targetUser)
+            if (updateErr != '') {
+                throw updateErr;
+            }
+
+            await this.dbUtils.CommitTx();
+            return [
+                <SuccessResponse>{
+                    statusCode: 204,
+                },
+                <ErrorResponse>{}]
+        }
+        catch (err) {
+            await this.dbUtils.RollbackTx();
+            return [
+                <SuccessResponse>{},
+                <ErrorResponse>{
+                    statusCode: 500,
+                    message: 'error occured while inserting new user'
+                }]
+        }
     }
 }
 

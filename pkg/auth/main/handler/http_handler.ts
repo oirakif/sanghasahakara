@@ -88,7 +88,7 @@ class MainAuthHTTPHandler {
       return;
     }
 
-    const [successWrapper, errWrapper] = await this.mainAuthDomain.RegisterUser(email, password, displayName)
+    const [successWrapper, errWrapper] = await this.mainAuthDomain.ResetPassword(id as number, oldPassword, newPassword)
     if (errWrapper.statusCode) {
       res.
         status(errWrapper.statusCode).
