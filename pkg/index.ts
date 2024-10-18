@@ -14,6 +14,7 @@ import bodyParser from 'body-parser'
 import MainAuthDomain from './auth/main/domain/domain';
 import EmailRepository from './email/repository/repository';
 import UsersEmailVerificationRepository from './users-email-verification/repository/repository';
+import UserDomain from './user/domain/domain';
 
 dotenv.config();
 
@@ -89,13 +90,14 @@ app.use(
   new GoogleOAuthHTTPHandler(
     process.env.GOOGLE_CLIENT_ID as string,
     process.env.GOOGLE_CLIENT_SECRET as string,
-    process.env.GOOGLE_OAUTH_CALLBACK_URL as string).
+    process.env.GOOGLE_OAUTH_CALLBACK_URL as string,
+    jwtUtils).
     InitializeRoutes(),
 
-  new MainAuthHTTPHandler(mainAuthDomain).
+  new MainAuthHTTPHandler(mainAuthDomain, jwtUtils).
     InitializeRoutes()
 );
-app.use('/user', new UserHTTPHandler().InitiateRoutes())
+app.use('/users', new UserHTTPHandler(new UserDomain(userRepository, dbUtils), jwtUtils).InitiateRoutes())
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

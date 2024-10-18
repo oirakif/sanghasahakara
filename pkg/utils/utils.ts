@@ -1,4 +1,4 @@
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express'
 import { User } from '../user/model/model';
@@ -17,7 +17,7 @@ class JWTUtils {
         return token;
     }
     public AuthenticateJWT(req: Request, res: Response, next: NextFunction) {
-        const token = req.headers.authorization?.split(' ')[1]; // Extract token from the Authorization header
+        const token = req.headers.authorization?.split('Bearer ')[1]; // Extract token from the Authorization header
 
         if (!token) {
             return res.status(401).json({ message: 'Missing access token' });

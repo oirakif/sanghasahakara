@@ -52,7 +52,8 @@ class MainAuthDomain {
                 message: 'invalid email address or password'
             }]
         }
-        const token = this.jwtUtils.GenerateToken({ id: retrievedUser[0].id }, '1d')
+
+        const token = this.jwtUtils.GenerateToken(retrievedUser[0], '1d')
         return [<SuccessResponse>{
             statusCode: 200,
             message: 'login successful',
@@ -89,6 +90,7 @@ class MainAuthDomain {
             password_hash: hashedPassword,
             display_name: displayName,
             is_email_verified: false,
+            account_type: 'MAIN',
             status: 'ACTIVE',
             created_at: currentTimestamp,
             updated_at: currentTimestamp,
@@ -100,7 +102,7 @@ class MainAuthDomain {
             if (insertErr != '') {
                 throw insertErr;
             }
-            const token = this.jwtUtils.GenerateToken({ id: newUserID }, '30m')
+            const token = this.jwtUtils.GenerateToken({ id: newUserID, account_type: 'MAIN' }, '30m')
 
             var expiresAt = moment(currentTimestamp).add(30, 'm').toDate();
             const userEmailVerification: UsersEmailVerification = <UsersEmailVerification>{

@@ -31,4 +31,21 @@ const RegisterPayloadSchema = Joi.object({
         required()
 })
 
-export { LoginPayloadSchema, RegisterPayloadSchema }
+const ResetPasswordPayloadSchema = Joi.object({
+    oldPassword: Joi.string()
+        .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{8,}$'))
+        .required()
+        .messages({
+            'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long.',
+            'string.empty': 'Password is required.',
+        }),
+    newPassword: Joi.string()
+        .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{8,}$'))
+        .required()
+        .messages({
+            'string.pattern.base': 'New Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long.',
+            'string.empty': 'Password is required.',
+        }),
+})
+
+export { LoginPayloadSchema, RegisterPayloadSchema, ResetPasswordPayloadSchema }

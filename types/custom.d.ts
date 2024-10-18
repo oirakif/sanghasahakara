@@ -4,13 +4,18 @@ declare global {
     namespace Express {
         // Extending the built-in User interface with your properties
         interface User {
-            id: string;
-            email?: string;
-            displayName?: string;
+            id: number;
+            accountType?: string;
+            token?: string;
         }
 
         // Extending the built-in Request interface to include the 'user' property
         interface Request {
+            user?: User;  // Make it optional as the user might not always be set
+        }
+        
+        // Extending the built-in Response interface to include the 'user' property
+         interface Response {
             user?: User;  // Make it optional as the user might not always be set
         }
     }
