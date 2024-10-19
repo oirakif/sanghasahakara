@@ -15,6 +15,7 @@ import MainAuthDomain from './auth/main/domain/domain';
 import EmailRepository from './email/repository/repository';
 import UsersEmailVerificationRepository from './users-email-verification/repository/repository';
 import UserDomain from './user/domain/domain';
+import { createClient } from 'redis';
 
 dotenv.config();
 
@@ -27,6 +28,9 @@ const dbClient = new Pool(
     port: parseInt(process.env.DB_PORT as string, 10) || 5432,
   }
 );
+
+
+const client = createClient().on('error', (err) => console.log('Redis Client Error', err)).connect();
 
 dbClient.connect(async (err) => {
   if (err) {
