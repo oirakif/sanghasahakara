@@ -5,7 +5,7 @@ import { ErrorResponse, SuccessResponse } from '../../../wrapper/wrapper'
 import EmailRepository from '../../../email/repository/repository';
 import UsersEmailVerificationRepository from '../../../users-email-verification/repository/repository';
 import moment from 'moment';
-import { UsersEmailVerification } from '../../../users-email-verification/model/model';
+import { UsersEmailVerification, UsersEmailVerificationFilterQuery } from '../../../users-email-verification/model/model';
 
 class MainAuthDomain {
     userRepository: UserRepository;
@@ -35,15 +35,9 @@ class MainAuthDomain {
             email,
             password_hash: hashedPassword,
             limit: 1,
-            offset: 1
+            offset: 0
         }
-        const [retrievedUser, err] = await this.userRepository.GetUsersList(filterQuery)
-        if (err != '') {
-            return [<SuccessResponse>{}, <ErrorResponse>{
-                statusCode: 500,
-                message: 'error on validating user'
-            }]
-        }
+        const retrievedUser = await this.userRepository.GetUsersList(filterQuery)
 
         if (retrievedUser.length == 0) {
             return [<SuccessResponse>{}, <ErrorResponse>{
@@ -65,15 +59,9 @@ class MainAuthDomain {
         const filterQuery: UserFilterQuery = <UserFilterQuery>{
             email,
             limit: 1,
-            offset: 1
+            offset: 0
         }
-        const [retrievedUser, getErr] = await this.userRepository.GetUsersList(filterQuery)
-        if (getErr != '') {
-            return [<SuccessResponse>{}, <ErrorResponse>{
-                statusCode: 500,
-                message: 'error on validating user'
-            }]
-        }
+        const retrievedUser = await this.userRepository.GetUsersList(filterQuery)
 
         if (retrievedUser.length > 0) {
             return [<SuccessResponse>{}, <ErrorResponse>{
@@ -81,7 +69,6 @@ class MainAuthDomain {
                 message: 'email is already registered'
             }]
         }
-
         const currentTimestamp = new Date();
         const newUser: User = <User>{
             email,
@@ -90,16 +77,15 @@ class MainAuthDomain {
             is_email_verified: false,
             account_type: 'MAIN',
             status: 'ACTIVE',
+            login_count: 0,
+            logout_count: 0,
             created_at: currentTimestamp,
             updated_at: currentTimestamp,
         }
 
         try {
             await this.dbUtils.InitTx();
-            const [newUserID, insertErr] = await this.userRepository.InsertUser(newUser)
-            if (insertErr != '') {
-                throw insertErr;
-            }
+            const newUserID = await this.userRepository.InsertUser(newUser)
             const token = this.jwtUtils.GenerateToken({ id: newUserID, account_type: 'MAIN' }, '30m')
 
             var expiresAt: Date = moment(currentTimestamp).add(30, 'm').toDate();
@@ -107,15 +93,13 @@ class MainAuthDomain {
                 id: newUserID,
                 token,
                 user_id: newUserID,
+                is_used: false,
                 expires_at: expiresAt,
                 created_at: currentTimestamp,
             }
-            const [_, emailVerifInsertErr] = await this.usersEmailVerificationRepository.InsertUsersEmailVerification(userEmailVerification)
-            if (emailVerifInsertErr != '') {
-                throw emailVerifInsertErr;
-            }
+            await this.usersEmailVerificationRepository.InsertUsersEmailVerification(userEmailVerification)
 
-            const verifyLink = `${this.mainServiceURL}/auth/main/verify?token=${token}`
+            const verifyLink = `${this.mainServiceURL}/auth/main/email/verify?user_id=${newUserID}&token=${token}`
             const emailContent =
                 `<h1>Welcome, ${displayName}!</h1>
            <p>Please confirm your email by clicking the link below:</p>
@@ -149,40 +133,28 @@ class MainAuthDomain {
 
     public async ResetPassword(id: number, oldPassword: string, newPassword: string): Promise<[SuccessResponse, ErrorResponse]> {
         const hashedOldPassword = SHA256hash(oldPassword)
-        const filterQuery: UserFilterQuery = <UserFilterQuery>{
-            id,
-            password_hash: hashedOldPassword,
-            limit: 1,
-            offset: 1
-        }
-        const [retrievedUser, getErr] = await this.userRepository.GetUsersList(filterQuery)
-        if (getErr != '') {
-            return [<SuccessResponse>{}, <ErrorResponse>{
-                statusCode: 500,
-                message: 'error on validating user'
-            }]
-        }
-
-        if (retrievedUser.length === 0) {
-            return [<SuccessResponse>{}, <ErrorResponse>{
-                statusCode: 404,
-                message: 'incorrect password'
-            }]
-        }
-
-        const hashedNewPassword = SHA256hash(newPassword)
-
-        const currentTimestamp = new Date();
-        const targetUser = retrievedUser[0];
-        targetUser.password_hash = hashedNewPassword;
-        targetUser.updated_at = currentTimestamp;
-
         try {
-            await this.dbUtils.InitTx();
-            const updateErr = await this.userRepository.UpdateUser(filterQuery, targetUser)
-            if (updateErr != '') {
-                throw updateErr;
+            const filterQuery: UserFilterQuery = <UserFilterQuery>{
+                id,
+                password_hash: hashedOldPassword,
+                limit: 1,
+                offset: 0
             }
+            const retrievedUser = await this.userRepository.GetUsersList(filterQuery)
+            if (retrievedUser.length === 0) {
+                return [<SuccessResponse>{}, <ErrorResponse>{
+                    statusCode: 404,
+                    message: 'incorrect password'
+                }]
+            }
+
+            const hashedNewPassword: string = SHA256hash(newPassword)
+            const currentTimestamp = new Date();
+            const targetUser = retrievedUser[0];
+            targetUser.password_hash = hashedNewPassword;
+            targetUser.updated_at = currentTimestamp;
+            await this.dbUtils.InitTx();
+            await this.userRepository.UpdateUser(filterQuery, targetUser)
 
             await this.dbUtils.CommitTx();
             return [
@@ -198,6 +170,72 @@ class MainAuthDomain {
                 <ErrorResponse>{
                     statusCode: 500,
                     message: 'error occured while inserting new user'
+                }]
+        }
+    }
+
+    public async verifyEmail(userID: number, token: string): Promise<[SuccessResponse, ErrorResponse]> {
+        const emailVerifFilterQuery: UsersEmailVerificationFilterQuery = <UsersEmailVerificationFilterQuery>{
+            user_id: userID,
+            token,
+            is_used: false,
+            limit: 1,
+            offset: 0
+        };
+
+
+        try {
+            await this.dbUtils.InitTx();
+            const retrievedEmailVerif = await this.usersEmailVerificationRepository.GetUsersEmailVerification(emailVerifFilterQuery);
+            if (retrievedEmailVerif.length == 0) {
+                return [<SuccessResponse>{}, <ErrorResponse>{
+                    statusCode: 404,
+                    message: 'invalid token or token is expired'
+                }]
+            };
+            const UserFilterQuery: UserFilterQuery = <UserFilterQuery>{
+                id: userID,
+                limit: 1,
+                offset: 0
+            };
+            const retrievedUser = await this.userRepository.GetUsersList(UserFilterQuery);
+            if (retrievedUser.length == 0) {
+                return [<SuccessResponse>{}, <ErrorResponse>{
+                    statusCode: 404,
+                    message: 'invalid email address or password'
+                }]
+            };
+
+            if (retrievedUser[0].is_email_verified) {
+                return [<SuccessResponse>{}, <ErrorResponse>{
+                    statusCode: 500,
+                    message: 'error on validating user'
+                }]
+            };
+
+            const currentTimestamp = new Date();
+            const updateUserPayload: User = <User>{
+                is_email_verified: true,
+                updated_at: currentTimestamp
+            }
+            await this.userRepository.UpdateUser(UserFilterQuery, updateUserPayload)
+            const updateUserVerificationPayload: UsersEmailVerification = <UsersEmailVerification>{
+                is_used: true,
+                updated_at: currentTimestamp
+            }
+            await this.usersEmailVerificationRepository.UpdateUsersEmailVerification(emailVerifFilterQuery, updateUserVerificationPayload);
+            await this.dbUtils.CommitTx();
+            return [<SuccessResponse>{
+                statusCode: 200,
+                message: 'user verify success',
+            }, <ErrorResponse>{}]
+        } catch (error) {
+            await this.dbUtils.RollbackTx();
+            return [
+                <SuccessResponse>{},
+                <ErrorResponse>{
+                    statusCode: 500,
+                    message: 'error occured while verifying user email'
                 }]
         }
     }

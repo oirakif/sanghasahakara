@@ -6,18 +6,22 @@ interface UserFilterQuery {
     is_verified?: boolean;
     account_type?: 'GOOGLE' | 'FACEBOOK' | 'MAIN';
     status?: 'ACTIVE' | 'DISABLED' | 'BANNED' | 'DELETED';
-    limit?: number;
-    offset?: number;
+    login_count?: number;
+    logout_count?: number;
+    limit: number;
+    offset: number;
 }
 
 interface User {
     id: number;
     email: string;
-    password_hash:string;
+    password_hash: string;
     display_name: string;
     is_email_verified: boolean;
     account_type: 'GOOGLE' | 'FACEBOOK' | 'MAIN';
     status: 'ACTIVE' | 'DISABLED' | 'BANNED' | 'DELETED';
+    login_count: number;
+    logout_count: number;
     created_at: Date;
     updated_at: Date;
 }
