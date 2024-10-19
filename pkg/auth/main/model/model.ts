@@ -48,4 +48,12 @@ const ResetPasswordPayloadSchema = Joi.object({
         }),
 })
 
-export { LoginPayloadSchema, RegisterPayloadSchema, ResetPasswordPayloadSchema }
+
+const VerifyEmailQuerySchema = Joi.object({
+    user_id: Joi.number()
+        .required(),
+    token: Joi.string()
+        .required(),
+})
+
+export { LoginPayloadSchema, VerifyEmailQuerySchema, RegisterPayloadSchema, ResetPasswordPayloadSchema }

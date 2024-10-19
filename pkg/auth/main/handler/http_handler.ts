@@ -1,6 +1,6 @@
 // AuthController.ts
 import { Request, Router, Response } from 'express';
-import { LoginPayloadSchema, RegisterPayloadSchema, ResetPasswordPayloadSchema } from '../model/model';
+import { LoginPayloadSchema, RegisterPayloadSchema, VerifyEmailQuerySchema, ResetPasswordPayloadSchema } from '../model/model';
 import MainAuthDomain from '../domain/domain';
 import { JWTUtils } from '../../../utils/utils';
 
@@ -17,6 +17,7 @@ class MainAuthHTTPHandler {
     const router = Router();
     router.post('/main/login', (req, res) => { this.handleLogin(req, res) });
     router.post('/main/register', (req, res) => { this.handleRegister(req, res) });
+    router.get('/main/email/verify', (req, res) => { this.handleVerifyEmail(req, res) });
     router.post('/main/password/reset',
       (req, res, next) => {
         this.jwtUtils.AuthenticateJWT(req, res, next)
@@ -97,6 +98,33 @@ class MainAuthHTTPHandler {
     }
     res.status(successWrapper.statusCode).json(successWrapper)
   }
+
+
+  private async handleVerifyEmail(req: Request, res: Response) {
+    const { user_id, token } = req.query
+    const userIDInt = parseInt(user_id as string)
+    const { error } = VerifyEmailQuerySchema.validate({ user_id: userIDInt, token });
+    if (error) {
+      const message = {
+        error: true,
+        message: error.details[0].message
+      }
+      res.status(400).json(
+        message
+      )
+      return;
+    }
+
+    const [successWrapper, errWrapper] = await this.mainAuthDomain.verifyEmail(userIDInt, token as string)
+    if (errWrapper.statusCode) {
+      res.
+        status(errWrapper.statusCode).
+        json(errWrapper)
+      return
+    }
+    res.status(successWrapper.statusCode).json(successWrapper)
+  }
+
 }
 
 export default MainAuthHTTPHandler

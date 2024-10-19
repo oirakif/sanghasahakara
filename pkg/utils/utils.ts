@@ -48,7 +48,8 @@ class DBUtils {
             await this.dbClient.query('BEGIN');
             return '';
         } catch (error) {
-            return error as string;
+            console.error(error)
+            throw (error);
         }
 
     }
@@ -57,7 +58,7 @@ class DBUtils {
             await this.dbClient.query('COMMIT');
             return '';
         } catch (error) {
-            return error as string;
+            throw (error);
         }
     }
     public async RollbackTx(): Promise<string> {
@@ -65,7 +66,7 @@ class DBUtils {
             await this.dbClient.query('ROLLBACK');
             return '';
         } catch (error) {
-            return error as string;
+            throw (error);
         }
     }
 }

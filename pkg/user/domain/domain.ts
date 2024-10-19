@@ -17,18 +17,11 @@ class UserDomain {
         const filterQuery: UserFilterQuery = <UserFilterQuery>{
             id,
             limit: 1,
-            offset: 1
+            offset: 0
         }
 
         try {
-            const [retrievedUser, getErr] = await this.userRepository.GetUsersList(filterQuery)
-            if (getErr != '') {
-                return [<SuccessResponse>{}, <ErrorResponse>{
-                    statusCode: 500,
-                    message: 'error on validating user'
-                }]
-            }
-
+            const retrievedUser = await this.userRepository.GetUsersList(filterQuery)
             if (retrievedUser.length === 0) {
                 return [<SuccessResponse>{}, <ErrorResponse>{
                     statusCode: 404,

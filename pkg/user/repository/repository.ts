@@ -8,7 +8,7 @@ class UserRepository {
         this.DBClient = dbCLient;
     }
 
-    public async GetUsersList(filterQuery: UserFilterQuery): Promise<[User[], string]> {
+    public async GetUsersList(filterQuery: UserFilterQuery): Promise<User[]> {
         const args: any[] = []
         const whereClauses: string[] = []
         let query = `SELECT id,email,is_email_verified,account_type,status,created_at,updated_at FROM users u`
@@ -41,26 +41,28 @@ class UserRepository {
             query += ` WHERE ` + whereClauses.join(' AND ');
         }
 
+        query += ` LIMIT $${whereClauses.length + 1} OFFSET $${whereClauses.length + 2}`
+        args.push(filterQuery.limit, filterQuery.offset)
+
         try {
             const queryRes = await this.DBClient.query(query, args)
             if (queryRes.rows.length === 0) {
-                return [[], '']
+                return [];
             }
 
             const result: User[] = queryRes.rows
-            return [result, '']
+            return result;
         }
         catch (err) {
-            console.log(err)
-
-            return [[], err as string]
+            console.error(err);;
+            throw (err);
         }
     }
 
 
-    public async InsertUser(newUser: User): Promise<[number, string]> {
+    public async InsertUser(newUser: User): Promise<number> {
         const args: any[] = []
-        let query = `INSERT INTO users (email,password_hash,display_name,is_email_verified,account_type,status,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id;`
+        let query = `INSERT INTO users (email,password_hash,display_name,is_email_verified,account_type,status,login_count,logout_count,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id;`
         args.push(
             newUser.email,
             newUser.password_hash,
@@ -68,29 +70,30 @@ class UserRepository {
             newUser.is_email_verified,
             newUser.account_type,
             newUser.status,
+            newUser.login_count,
+            newUser.logout_count,
             newUser.created_at,
             newUser.updated_at,
         )
 
         try {
             const res = await this.DBClient.query(query, args)
-            return [res.rows[0].id, '']
+            return res.rows[0].id;
         }
         catch (err) {
-            console.log(err)
+            console.error(err);
 
-            return [0, err as string]
+            throw (err);
         }
     }
 
 
-    public async UpdateUser(filterQuery: UserFilterQuery, payload: User): Promise<string> {
+    public async UpdateUser(filterQuery: UserFilterQuery, payload: User) {
         const args: any[] = []
         const updateClauses: any[] = []
         const whereClauses: any[] = []
 
         let query = `UPDATE users`
-
         // set update clause
         if (payload.display_name) {
             updateClauses.push(`display_name = $${args.length + 1}`);
@@ -103,11 +106,35 @@ class UserRepository {
                 payload.password_hash)
         };
 
+        if (payload.is_email_verified) {
+            updateClauses.push(`is_email_verified = $${args.length + 1}`);
+            args.push(
+                payload.is_email_verified)
+        };
+
+        if (payload.login_count) {
+            updateClauses.push(`login_count = $${args.length + 1}`);
+            args.push(
+                payload.login_count)
+        };
+
+        if (payload.logout_count) {
+            updateClauses.push(`logout_count = $${args.length + 1}`);
+            args.push(
+                payload.logout_count)
+        };
+
+        if (payload.updated_at) {
+            updateClauses.push(`updated_at = $${args.length + 1}`);
+            args.push(
+                payload.updated_at)
+        };
+
         if (args.length === 0) {
             return 'no update payload specified';
         }
 
-        query += ` SET ` + updateClauses.join(' AND ');
+        query += ` SET ` + updateClauses.join(' , ');
         // set where clause
         if (filterQuery.id) {
             whereClauses.push(`id = $${args.length + 1}`);
@@ -116,13 +143,12 @@ class UserRepository {
 
         query += ` WHERE ` + whereClauses.join(' AND ');
         try {
-            const res = await this.DBClient.query(query, args)
-            return ''
+            await this.DBClient.query(query, args)
         }
         catch (err) {
-            console.log(err)
+            console.error(err);
 
-            return err as string
+            throw (err);
         }
     }
 }
