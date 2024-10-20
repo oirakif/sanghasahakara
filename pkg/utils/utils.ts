@@ -71,8 +71,12 @@ class DBUtils {
     }
 }
 
+function CalculateOffset(page: number, perPage: number): number {
+    return (page - 1) * perPage
+}
 
 function SHA256hash(plaintext: string): string {
     return crypto.createHash('sha256').update(plaintext).digest('hex');
 }
-export { JWTUtils, DBUtils, SHA256hash } 
+
+export { JWTUtils, DBUtils, SHA256hash, CalculateOffset } 

@@ -4,8 +4,9 @@ declare global {
     namespace Express {
         // Extending the built-in User interface with your properties
         interface User {
-            id: number;
-            accountType?: string;
+            id?: number;
+            email?: string;
+            displayName?:string;
             token?: string;
         }
 

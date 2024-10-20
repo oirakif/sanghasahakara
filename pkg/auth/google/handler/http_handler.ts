@@ -1,88 +1,66 @@
-
-import { Request, Router, Response, NextFunction } from 'express';
+// AuthController.ts
+import { Request, Router, Response } from 'express';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { JWTUtils } from '../../../utils/utils';
+import GoogleOAuthDomain from '../domain/domain';
 
 class GoogleOAuthHTTPHandler {
   clientID: string;
   clientSecret: string;
-  defaultCallbackURL: string;
+  callbackURL: string;
   jwtUtils: JWTUtils;
+  googleOAuthDomain: GoogleOAuthDomain;
 
-  constructor(clientID: string, clientSecret: string, defaultCallbackURL: string, jwtUtils: JWTUtils) {
+  constructor(clientID: string, clientSecret: string, callbackURL: string, jwtUtils: JWTUtils, googleOAuthDomain: GoogleOAuthDomain) {
     this.clientID = clientID;
     this.clientSecret = clientSecret;
-    this.defaultCallbackURL = defaultCallbackURL;
+    this.callbackURL = callbackURL;
     this.jwtUtils = jwtUtils;
+    this.googleOAuthDomain = googleOAuthDomain;
   }
 
   private initializePassport() {
     passport.use(new GoogleStrategy({
       clientID: this.clientID,
       clientSecret: this.clientSecret,
-      callbackURL: this.defaultCallbackURL
+      callbackURL: this.callbackURL
     }, async (accessToken, refreshToken, profile, done) => {
+      const email = profile.emails && profile.emails[0] ? profile.emails[0].value : undefined;
       const user: Express.User = {
-        id: 0
+        email,
+        displayName: profile.displayName,
       };
       done(null, user)
     }));
 
-
+    // Serialize user to store in session
     passport.serializeUser((user, done) => {
-      done(null, user.id);
+      done(null, user); // Store only user ID
     });
 
-
-    passport.deserializeUser((id: number, done) => {
-
-      const token = this.jwtUtils.GenerateToken({ id, account_type: 'GOOGLE' }, '1d')
-      const user: Express.User = {
-        id,
-        accountType: 'GOOGLE',
-        token
-      };
-      done(null, user);
+    // Deserialize user from session
+    passport.deserializeUser(async (user: Express.User, done) => {
+      // Here you can fetch the user from the database by ID
+      const [userID, token] = await this.googleOAuthDomain.ProcessGoogleOAuthLogin(user.email as string, user.displayName as string)
+      user.id = userID;
+      user.token = token
+      done(null, user); // Pass the user object
     });
   }
 
   public InitializeRoutes() {
     this.initializePassport();
     const router = Router();
-    router.get('/google', (req: Request, res: Response, next: NextFunction) => {
-      const redirectUri = req.query.redirect_uri as string || this.defaultCallbackURL;
-      this.handleGoogleAuth(req, res, next, redirectUri)
-    }
-
-    );
-    router.get('/callback/google',
-      passport.authenticate('google', { scope: ['profile', 'email'], failureRedirect: '/login' }),
-      (req, res) => {
-        this.handleGoogleAuthCallback(req, res)
-      });
+    router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }),);
+    router.get('/callback/google', passport.authenticate('google', { failureRedirect: '/login' }), this.handleOAuthGoogleLogin);
     return router;
   }
 
+  private handleOAuthGoogleLogin(req: Request, res: Response) {
 
-  private handleGoogleAuth(req: Request, res: Response, next: NextFunction, redirectUri: string) {
-    passport.authenticate('google', {
-      scope: ['profile', 'email'],
-      state: redirectUri,
-    })(req, res, next);
+    res.redirect(`/user/profile?access_token=${req.user?.token}`);
   }
-
-  private handleGoogleAuthCallback(req: Request, res: Response) {
-    if (!req.query.state) {
-      return res.redirect(this.defaultCallbackURL);
-    }
-
-    let finalRedirect = req.query.state as string;
-
-    finalRedirect += `?access_token=${req.user?.token}`;
-    res.redirect(finalRedirect);
-  }
-
 }
 
 export default GoogleOAuthHTTPHandler

@@ -1,5 +1,7 @@
+import Joi from 'joi'
 interface UserFilterQuery {
     id?: number;
+    countIndex?: string;
     email?: string;
     password_hash?: string;
     display_name?: string;
@@ -8,8 +10,10 @@ interface UserFilterQuery {
     status?: 'ACTIVE' | 'DISABLED' | 'BANNED' | 'DELETED';
     login_count?: number;
     logout_count?: number;
-    limit: number;
-    offset: number;
+    limit?: number;
+    offset?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC' | 'asc' | 'desc';
 }
 
 interface User {
@@ -26,7 +30,15 @@ interface User {
     updated_at: Date;
 }
 
+const GetUserStatisticsQuerySchema = Joi.object({
+    activeSessionsInterval: Joi.number()
+        .required().
+        min(1)
+})
+
 export {
     UserFilterQuery,
-    User
+    User,
+    GetUserStatisticsQuerySchema
 }
+

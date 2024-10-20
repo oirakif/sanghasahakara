@@ -6,11 +6,14 @@ import EmailRepository from '../../../email/repository/repository';
 import UsersEmailVerificationRepository from '../../../users-email-verification/repository/repository';
 import moment from 'moment';
 import { UsersEmailVerification, UsersEmailVerificationFilterQuery } from '../../../users-email-verification/model/model';
+import { UserSessions } from '../../../user-session/model/model';
+import UserSessionsRepository from '../../../user-session/repository/repository';
 
 class MainAuthDomain {
     userRepository: UserRepository;
     emailRepository: EmailRepository;
     usersEmailVerificationRepository: UsersEmailVerificationRepository;
+    userSessionsRepository: UserSessionsRepository;
     jwtUtils: JWTUtils;
     mainServiceURL: string;
     dbUtils: DBUtils;
@@ -18,6 +21,7 @@ class MainAuthDomain {
         userRepository: UserRepository,
         emailRepository: EmailRepository,
         usersEmailVerificationRepository: UsersEmailVerificationRepository,
+        userSessionsRepository: UserSessionsRepository,
         jwtUtils: JWTUtils,
         dbUtils: DBUtils,
         mainServiceURL: string) {
@@ -27,6 +31,7 @@ class MainAuthDomain {
         this.emailRepository = emailRepository;
         this.mainServiceURL = mainServiceURL;
         this.usersEmailVerificationRepository = usersEmailVerificationRepository;
+        this.userSessionsRepository= userSessionsRepository;
     }
 
     public async LoginUser(email: string, password: string): Promise<[SuccessResponse, ErrorResponse]> {
@@ -37,21 +42,31 @@ class MainAuthDomain {
             limit: 1,
             offset: 0
         }
-        const retrievedUser = await this.userRepository.GetUsersList(filterQuery)
 
-        if (retrievedUser.length == 0) {
+        try {
+            const retrievedUser = await this.userRepository.GetUsersList(filterQuery)
+
+            if (retrievedUser.length == 0) {
+                return [<SuccessResponse>{}, <ErrorResponse>{
+                    statusCode: 404,
+                    message: 'invalid email address or password'
+                }]
+            }
+            const targetUser = retrievedUser[0]
+            targetUser.login_count = targetUser.login_count + 1;
+            await this.userRepository.UpdateUser(filterQuery, targetUser)
+            const token = this.jwtUtils.GenerateToken(retrievedUser[0], '1d')
+            return [<SuccessResponse>{
+                statusCode: 200,
+                message: 'login successful',
+                token
+            }, <ErrorResponse>{}]
+        } catch (error) {
             return [<SuccessResponse>{}, <ErrorResponse>{
-                statusCode: 404,
-                message: 'invalid email address or password'
+                statusCode: 500,
+                message: 'error occured in login process'
             }]
         }
-
-        const token = this.jwtUtils.GenerateToken(retrievedUser[0], '1d')
-        return [<SuccessResponse>{
-            statusCode: 200,
-            message: 'login successful',
-            token
-        }, <ErrorResponse>{}]
     }
 
     public async RegisterUser(email: string, password: string, displayName: string): Promise<[SuccessResponse, ErrorResponse]> {
@@ -98,7 +113,13 @@ class MainAuthDomain {
                 created_at: currentTimestamp,
             }
             await this.usersEmailVerificationRepository.InsertUsersEmailVerification(userEmailVerification)
-
+            const newUserSessions: UserSessions = <UserSessions>{
+                user_id: newUserID,
+                last_active: currentTimestamp,
+                created_at: currentTimestamp,
+            }
+            await this.userSessionsRepository.InsertUserSession(newUserSessions)
+            await this.dbUtils.CommitTx();
             const verifyLink = `${this.mainServiceURL}/auth/main/email/verify?user_id=${newUserID}&token=${token}`
             const emailContent =
                 `<h1>Welcome, ${displayName}!</h1>
@@ -110,7 +131,7 @@ class MainAuthDomain {
                 'Email Verification',
                 emailContent
             )
-            await this.dbUtils.CommitTx();
+
             return [
                 <SuccessResponse>{
                     statusCode: 200,
