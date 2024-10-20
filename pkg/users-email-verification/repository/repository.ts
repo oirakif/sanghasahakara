@@ -10,12 +10,14 @@ class UsersEmailVerificationRepository {
 
     public async InsertUsersEmailVerification(payload: UsersEmailVerification) {
         const args: any[] = []
-        let query = `INSERT INTO users_email_verifications (user_id,token,expires_at,created_at) VALUES($1,$2,$3,$4)`
+        let query = `INSERT INTO users_email_verifications (user_id,token,is_used,expires_at,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6)`
         args.push(
             payload.user_id,
             payload.token,
+            payload.is_used,
             payload.expires_at,
             payload.created_at,
+            payload.updated_at
         )
 
         try {
