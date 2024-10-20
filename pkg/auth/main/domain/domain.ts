@@ -1,6 +1,6 @@
 import UserRepository from '../../../user/repository/repository';
 import { UserFilterQuery, User } from '../../../user/model/model';
-import { DBUtils, JWTUtils, SHA256hash } from '../../../utils/utils'
+import { DBUtils, JWTUtils, SHA256hash, NewUUID } from '../../../utils/utils'
 import { ErrorResponse, SuccessResponse } from '../../../wrapper/wrapper'
 import EmailRepository from '../../../email/repository/repository';
 import UsersEmailVerificationRepository from '../../../users-email-verification/repository/repository';
@@ -59,7 +59,8 @@ class MainAuthDomain {
             const targetUser = retrievedUser[0]
             targetUser.login_count = targetUser.login_count + 1;
             await this.userRepository.UpdateUser(filterQuery, targetUser)
-            const token = this.jwtUtils.GenerateToken(retrievedUser[0], '1d')
+            const jti = NewUUID();
+            const token = this.jwtUtils.GenerateToken({ ...retrievedUser[0], jti }, '1d')
             return [<SuccessResponse>{
                 statusCode: 200,
                 message: 'login successful',
@@ -175,6 +176,12 @@ class MainAuthDomain {
 
 
     public async ResetPassword(id: number, oldPassword: string, newPassword: string): Promise<[SuccessResponse, ErrorResponse]> {
+        if (oldPassword === newPassword) {
+            return [<SuccessResponse>{}, <ErrorResponse>{
+                statusCode: 409,
+                message: 'identical old and new password'
+            }]
+        }
         const hashedOldPassword = SHA256hash(oldPassword)
         try {
             const filterQuery: UserFilterQuery = <UserFilterQuery>{
