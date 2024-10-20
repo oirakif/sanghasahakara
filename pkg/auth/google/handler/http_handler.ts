@@ -33,13 +33,12 @@ class GoogleOAuthHTTPHandler {
   
       // Get user ID and token
       const [userID, token] = await this.googleOAuthDomain.ProcessGoogleOAuthLogin(email, displayName);
-  
       const user: Express.User = {
         id: userID,
         email,
         displayName,
         token // Include token for later use
-      };
+      }; 
   
       done(null, user);
     }));
@@ -66,16 +65,13 @@ class GoogleOAuthHTTPHandler {
     });
 
     router.get('/callback/google', (req: Request, res: Response, next: NextFunction) => {
-      // Handle the Google authentication response
       passport.authenticate('google', { failureRedirect: this.frontendURL }, (err, user, info) => {
         if (err) return next(err);
         if (!user) return res.redirect(this.frontendURL); // Redirect if user is not found
 
-        // Store user info in the session
         req.logIn(user, (err) => {
           if (err) return next(err);
 
-          // Now, `req.user` should have the user information
           this.handleOAuthGoogleLogin(req, res);
         });
       })(req, res, next);

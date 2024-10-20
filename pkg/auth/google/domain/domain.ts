@@ -59,7 +59,8 @@ class GoogleOAuthDomain {
             await this.userSessionsRepository.InsertUserSession(newUserSessions)
             await this.dbUtils.CommitTx();
             const jti = NewUUID();
-            const token = this.jwtUtils.GenerateToken({...retrievedUser[0],jti}, '1d');
+            newUser.password_hash='';
+            const token = this.jwtUtils.GenerateToken({...newUser,jti}, '1d');
             return [newUserID, token];
         } catch (error) {
             await this.dbUtils.RollbackTx();
