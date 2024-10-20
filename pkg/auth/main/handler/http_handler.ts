@@ -17,7 +17,11 @@ class MainAuthHTTPHandler {
   public InitializeRoutes() {
     const router = Router();
     router.post('/main/login', (req, res) => { this.handleLogin(req, res) });
-    router.post('/main/logout', (req, res) => { this.handleLogout(req, res) });
+    router.post('/main/logout',
+      (req, res, next) => {
+        this.jwtUtils.AuthenticateJWT(req, res, next)
+      },
+      (req, res) => { this.handleLogout(req, res) });
     router.post('/main/register', (req, res) => { this.handleRegister(req, res) });
     router.get('/main/email/verify', (req, res) => { this.handleVerifyEmail(req, res) });
     router.post('/main/password/reset',
@@ -62,7 +66,6 @@ class MainAuthHTTPHandler {
     const token = authHeader.split(" ")[1];
 
     const decodedToken = jwt.decode(token) as { jti?: string; exp?: number } | null;
-
     if (!decodedToken || !decodedToken.jti || !decodedToken.exp) {
       return res.status(401).json({ message: 'unauthorized' });
     }

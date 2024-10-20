@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express'
 import { User } from '../user/model/model';
 import { Pool } from 'pg';
 import RedisRepository from '../redis/repository/repository';
+import { v4 as uuidv4 } from 'uuid';
 
 class JWTUtils {
     secret: string;
@@ -29,15 +30,16 @@ class JWTUtils {
         const decodedToken = jwt.decode(token) as { jti?: string, exp?: number } | null;
 
         if (!decodedToken) {
-            return res.status(401).json({ message: 'Unauthorized' }); // Handle non-JWT tokens here
+            return res.status(401).json({ message: 'Unauthorized' });
         }
-
+        if(!decodedToken.jti){
+            return res.status(401).json({ message: 'Unauthorized' });   
+        }
         const blacklisted: string = await this.redisClientRepository.Get(decodedToken.jti as string)
-
-        if(blacklisted===''){
-            return res.status(401).json({ message: 'Unauthorized' }); // Handle non-JWT tokens here   
+        if (blacklisted) {
+            return res.status(401).json({ message: 'Unauthorized' });   
         }
-        
+
         // Verify the JWT token
         jwt.verify(token, this.secret, (err, user) => {
             if (err) {
@@ -50,7 +52,6 @@ class JWTUtils {
         });
     }
 }
-
 
 class DBUtils {
     dbClient: Pool;
@@ -86,6 +87,10 @@ class DBUtils {
     }
 }
 
+function NewUUID(): string {
+    return uuidv4();
+}
+
 function CalculateOffset(page: number, perPage: number): number {
     return (page - 1) * perPage
 }
@@ -94,4 +99,4 @@ function SHA256hash(plaintext: string): string {
     return crypto.createHash('sha256').update(plaintext).digest('hex');
 }
 
-export { JWTUtils, DBUtils, SHA256hash, CalculateOffset } 
+export { JWTUtils, DBUtils, SHA256hash, NewUUID, CalculateOffset } 
