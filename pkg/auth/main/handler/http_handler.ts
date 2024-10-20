@@ -3,6 +3,7 @@ import { Request, Router, Response } from 'express';
 import { LoginPayloadSchema, RegisterPayloadSchema, VerifyEmailQuerySchema, ResetPasswordPayloadSchema } from '../model/model';
 import MainAuthDomain from '../domain/domain';
 import { JWTUtils } from '../../../utils/utils';
+import jwt from 'jsonwebtoken';
 
 class MainAuthHTTPHandler {
   mainAuthDomain: MainAuthDomain;
@@ -16,6 +17,7 @@ class MainAuthHTTPHandler {
   public InitializeRoutes() {
     const router = Router();
     router.post('/main/login', (req, res) => { this.handleLogin(req, res) });
+    router.post('/main/logout', (req, res) => { this.handleLogout(req, res) });
     router.post('/main/register', (req, res) => { this.handleRegister(req, res) });
     router.get('/main/email/verify', (req, res) => { this.handleVerifyEmail(req, res) });
     router.post('/main/password/reset',
@@ -41,6 +43,31 @@ class MainAuthHTTPHandler {
     }
 
     const [successWrapper, errWrapper] = await this.mainAuthDomain.LoginUser(email, password)
+    if (errWrapper.statusCode) {
+      res.
+        status(errWrapper.statusCode).
+        json(errWrapper)
+      return
+    }
+    res.status(successWrapper.statusCode).json(successWrapper)
+  }
+
+  private async handleLogout(req: Request, res: Response) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ message: 'unauthorized' });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const decodedToken = jwt.decode(token) as { jti?: string; exp?: number } | null;
+
+    if (!decodedToken || !decodedToken.jti || !decodedToken.exp) {
+      return res.status(401).json({ message: 'unauthorized' });
+    }
+
+    const [successWrapper, errWrapper] = await this.mainAuthDomain.LogoutUser(decodedToken.jti, decodedToken.exp)
     if (errWrapper.statusCode) {
       res.
         status(errWrapper.statusCode).

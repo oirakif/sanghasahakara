@@ -3,11 +3,14 @@ import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express'
 import { User } from '../user/model/model';
 import { Pool } from 'pg';
+import RedisRepository from '../redis/repository/repository';
 
 class JWTUtils {
     secret: string;
-    constructor(secret: string) {
+    redisClientRepository: RedisRepository;
+    constructor(secret: string, redisClientRepository: RedisRepository) {
         this.secret = secret;
+        this.redisClientRepository = redisClientRepository;
     }
 
     public GenerateToken(payload: object, expiryTime: string) {
@@ -16,13 +19,25 @@ class JWTUtils {
         });
         return token;
     }
-    public AuthenticateJWT(req: Request, res: Response, next: NextFunction) {
-        const token = req.headers.authorization?.split('Bearer ')[1]; // Extract token from the Authorization header
+    public async AuthenticateJWT(req: Request, res: Response, next: NextFunction) {
+        const token: string = req.headers.authorization?.split('Bearer ')[1] as string;
 
         if (!token) {
-            return res.status(401).json({ message: 'Missing access token' });
+            return res.status(401).json({ message: 'Unauthorized' });
         }
 
+        const decodedToken = jwt.decode(token) as { jti?: string, exp?: number } | null;
+
+        if (!decodedToken) {
+            return res.status(401).json({ message: 'Unauthorized' }); // Handle non-JWT tokens here
+        }
+
+        const blacklisted: string = await this.redisClientRepository.Get(decodedToken.jti as string)
+
+        if(blacklisted===''){
+            return res.status(401).json({ message: 'Unauthorized' }); // Handle non-JWT tokens here   
+        }
+        
         // Verify the JWT token
         jwt.verify(token, this.secret, (err, user) => {
             if (err) {

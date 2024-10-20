@@ -15,9 +15,10 @@ import MainAuthDomain from './auth/main/domain/domain';
 import EmailRepository from './email/repository/repository';
 import UsersEmailVerificationRepository from './users-email-verification/repository/repository';
 import UserDomain from './user/domain/domain';
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from '@redis/client';
 import UserSessionsRepository from './user-session/repository/repository';
 import GoogleOAuthDomain from './auth/google/domain/domain';
+import RedisRepository from './redis/repository/repository';
 
 dotenv.config();
 
@@ -32,7 +33,13 @@ const dbClient = new Pool(
 );
 
 
-const client = createClient().on('error', (err) => console.log('Redis Client Error', err)).connect();
+const redisClient: RedisClientType = createClient({
+  url: 'redis://localhost:6379', // Adjust the Redis URL based on your setup
+});
+
+// Handle connection events (optional)
+redisClient.on('error', (err) => console.error('Redis Client Error', err));
+redisClient.connect();
 
 dbClient.connect(async (err) => {
   if (err) {
@@ -51,8 +58,11 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// redis repo
+const redisRepository = new RedisRepository(redisClient);
+
 // initiate utils
-const jwtUtils = new JWTUtils(process.env.JWT_SECRET as string);
+const jwtUtils = new JWTUtils(process.env.JWT_SECRET as string, redisRepository);
 const dbUtils = new DBUtils(dbClient);
 
 
@@ -68,6 +78,7 @@ const mainAuthDomain = new MainAuthDomain(
   emailRepository,
   userEmailVerificationRepository,
   userSessionsRepository,
+  redisRepository,
   jwtUtils,
   dbUtils,
   process.env.MAIN_SERVICE_URL as string,

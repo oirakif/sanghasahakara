@@ -8,12 +8,14 @@ import moment from 'moment';
 import { UsersEmailVerification, UsersEmailVerificationFilterQuery } from '../../../users-email-verification/model/model';
 import { UserSessions } from '../../../user-session/model/model';
 import UserSessionsRepository from '../../../user-session/repository/repository';
+import RedisRepository from '../../../redis/repository/repository';
 
 class MainAuthDomain {
     userRepository: UserRepository;
     emailRepository: EmailRepository;
     usersEmailVerificationRepository: UsersEmailVerificationRepository;
     userSessionsRepository: UserSessionsRepository;
+    redisRepository: RedisRepository;
     jwtUtils: JWTUtils;
     mainServiceURL: string;
     dbUtils: DBUtils;
@@ -22,6 +24,7 @@ class MainAuthDomain {
         emailRepository: EmailRepository,
         usersEmailVerificationRepository: UsersEmailVerificationRepository,
         userSessionsRepository: UserSessionsRepository,
+        redisRepository: RedisRepository,
         jwtUtils: JWTUtils,
         dbUtils: DBUtils,
         mainServiceURL: string) {
@@ -29,9 +32,10 @@ class MainAuthDomain {
         this.jwtUtils = jwtUtils;
         this.dbUtils = dbUtils;
         this.emailRepository = emailRepository;
+        this.redisRepository = redisRepository;
         this.mainServiceURL = mainServiceURL;
         this.usersEmailVerificationRepository = usersEmailVerificationRepository;
-        this.userSessionsRepository= userSessionsRepository;
+        this.userSessionsRepository = userSessionsRepository;
     }
 
     public async LoginUser(email: string, password: string): Promise<[SuccessResponse, ErrorResponse]> {
@@ -68,6 +72,24 @@ class MainAuthDomain {
             }]
         }
     }
+
+
+    public async LogoutUser(jwtID: string, expiryTime: number): Promise<[SuccessResponse, ErrorResponse]> {
+        const cacheExp = expiryTime - Math.floor(Date.now() / 1000);
+        try {
+            await this.redisRepository.Set(jwtID, "blacklisted", cacheExp);
+
+        } catch (error) {
+            return [<SuccessResponse>{}, <ErrorResponse>{
+                statusCode: 500,
+                message: 'error on logging out user'
+            }]
+        }
+        // Store the token ID in Redis
+
+        return [<SuccessResponse>{ statusCode: 204 }, <ErrorResponse>{}]
+    }
+
 
     public async RegisterUser(email: string, password: string, displayName: string): Promise<[SuccessResponse, ErrorResponse]> {
         const hashedPassword = SHA256hash(password)
