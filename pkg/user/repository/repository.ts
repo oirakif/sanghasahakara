@@ -138,6 +138,12 @@ class UserRepository {
                 payload.updated_at)
         };
 
+        if (payload.logoutIncrement) {
+            updateClauses.push(`logout_count = logout_count+$${args.length + 1}`);
+            args.push(
+                payload.logoutIncrement)
+        };
+
         if (args.length === 0) {
             return 'no update payload specified';
         }

@@ -28,6 +28,9 @@ interface User {
     logout_count: number;
     created_at: Date;
     updated_at: Date;
+
+    // update payload
+    logoutIncrement?: number;
 }
 
 const GetUserStatisticsQuerySchema = Joi.object({

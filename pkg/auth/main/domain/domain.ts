@@ -75,10 +75,16 @@ class MainAuthDomain {
     }
 
 
-    public async LogoutUser(jwtID: string, expiryTime: number): Promise<[SuccessResponse, ErrorResponse]> {
-        const cacheExp = expiryTime - Math.floor(Date.now() / 1000);
+    public async LogoutUser(jwtID: string, userID: number): Promise<[SuccessResponse, ErrorResponse]> {
         try {
-            await this.redisRepository.Set(jwtID, "blacklisted", cacheExp);
+            await this.redisRepository.Set(jwtID, "blacklisted", 60 * 60 * 24);
+            const filter: UserFilterQuery = <UserFilterQuery>{
+                id: userID
+            }
+            const payload: User = <User>{
+                logoutIncrement: 1
+            }
+            await this.userRepository.UpdateUser(filter, payload)
 
         } catch (error) {
             return [<SuccessResponse>{}, <ErrorResponse>{
