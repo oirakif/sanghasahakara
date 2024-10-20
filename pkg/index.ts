@@ -34,7 +34,9 @@ const dbClient = new Pool(
 
 
 const redisClient: RedisClientType = createClient({
-  url: 'redis://localhost:6379', // Adjust the Redis URL based on your setup
+  url: process.env.REDIS_HOST as string,
+  username: process.env.REDIS_USERNAME,
+  password: process.env.REDIS_PASSWORD,
 });
 
 // Handle connection events (optional)
