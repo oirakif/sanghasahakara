@@ -16,6 +16,8 @@ import EmailRepository from './email/repository/repository';
 import UsersEmailVerificationRepository from './users-email-verification/repository/repository';
 import UserDomain from './user/domain/domain';
 import { createClient } from 'redis';
+import UserSessionsRepository from './user-session/repository/repository';
+import GoogleOAuthDomain from './auth/google/domain/domain';
 
 dotenv.config();
 
@@ -58,15 +60,23 @@ const dbUtils = new DBUtils(dbClient);
 const userRepository = new UserRepository(dbClient);
 const userEmailVerificationRepository = new UsersEmailVerificationRepository(dbClient);
 const emailRepository = new EmailRepository(transporter);
+const userSessionsRepository = new UserSessionsRepository(dbClient);
 
 // initiate domains
 const mainAuthDomain = new MainAuthDomain(
   userRepository,
   emailRepository,
   userEmailVerificationRepository,
+  userSessionsRepository,
   jwtUtils,
   dbUtils,
   process.env.MAIN_SERVICE_URL as string,
+);
+const googleOAuthDomain = new GoogleOAuthDomain(
+  userRepository,
+  userSessionsRepository,
+  jwtUtils,
+  dbUtils,
 );
 
 
@@ -95,13 +105,14 @@ app.use(
     process.env.GOOGLE_CLIENT_ID as string,
     process.env.GOOGLE_CLIENT_SECRET as string,
     process.env.GOOGLE_OAUTH_CALLBACK_URL as string,
-    jwtUtils).
+    jwtUtils,
+    googleOAuthDomain).
     InitializeRoutes(),
 
   new MainAuthHTTPHandler(mainAuthDomain, jwtUtils).
     InitializeRoutes()
 );
-app.use('/users', new UserHTTPHandler(new UserDomain(userRepository, dbUtils), jwtUtils).InitiateRoutes())
+app.use('/users', new UserHTTPHandler(new UserDomain(userRepository, dbUtils, userSessionsRepository), jwtUtils).InitiateRoutes())
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

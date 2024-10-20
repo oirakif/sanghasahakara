@@ -11,7 +11,7 @@ class UserRepository {
     public async GetUsersList(filterQuery: UserFilterQuery): Promise<User[]> {
         const args: any[] = []
         const whereClauses: string[] = []
-        let query = `SELECT id,email,is_email_verified,account_type,status,created_at,updated_at FROM users u`
+        let query = `SELECT id,email,is_email_verified,account_type,status,login_count,logout_count,created_at,updated_at FROM users u`
         if (filterQuery.id) {
             whereClauses.push(`id = $${whereClauses.length + 1}`);
             args.push(filterQuery.id);
@@ -44,6 +44,15 @@ class UserRepository {
         query += ` LIMIT $${whereClauses.length + 1} OFFSET $${whereClauses.length + 2}`
         args.push(filterQuery.limit, filterQuery.offset)
 
+        if (filterQuery.sortBy) {
+            query += `ORDER BY ${whereClauses.length + 3} ${whereClauses.length + 4}`
+            args.push(filterQuery.sortBy)
+            if (filterQuery.sortOrder) {
+                args.push(filterQuery.sortOrder)
+            } else {
+                args.push('DESC')
+            }
+        }
         try {
             const queryRes = await this.DBClient.query(query, args)
             if (queryRes.rows.length === 0) {
@@ -92,7 +101,6 @@ class UserRepository {
         const args: any[] = []
         const updateClauses: any[] = []
         const whereClauses: any[] = []
-
         let query = `UPDATE users`
         // set update clause
         if (payload.display_name) {
@@ -140,6 +148,10 @@ class UserRepository {
             whereClauses.push(`id = $${args.length + 1}`);
             args.push(filterQuery.id);
         }
+        if (filterQuery.email) {
+            whereClauses.push(`email = $${args.length + 1}`);
+            args.push(filterQuery.email);
+        }
 
         query += ` WHERE ` + whereClauses.join(' AND ');
         try {
@@ -148,6 +160,56 @@ class UserRepository {
         catch (err) {
             console.error(err);
 
+            throw (err);
+        }
+    }
+
+    public async CountUsers(filterQuery: UserFilterQuery): Promise<number> {
+        const args: any[] = []
+        const whereClauses: string[] = []
+        let countIndex = '*';
+        if (filterQuery.countIndex) {
+            countIndex = filterQuery.countIndex
+        }
+        let query = `SELECT COUNT(${countIndex}) AS users_count FROM users`
+        if (filterQuery.id) {
+            whereClauses.push(`id = $${whereClauses.length + 1}`);
+            args.push(filterQuery.id);
+        }
+
+        if (filterQuery.password_hash) {
+            whereClauses.push(`password_hash = $${whereClauses.length + 1}`);
+            args.push(filterQuery.password_hash);
+        }
+
+        if (filterQuery.email) {
+            whereClauses.push(`email = $${whereClauses.length + 1}`);
+            args.push(filterQuery.email);
+        }
+
+        if (filterQuery.is_verified) {
+            whereClauses.push(`is_verified = $${whereClauses.length + 1}`);
+            args.push(filterQuery.is_verified);
+        }
+
+        if (filterQuery.status) {
+            whereClauses.push(`status = $${whereClauses.length + 1}`);
+            args.push(filterQuery.status);
+        }
+
+        if (whereClauses.length > 0) {
+            query += ` WHERE ` + whereClauses.join(' AND ');
+        }
+
+        try {
+            const queryRes = await this.DBClient.query(query, args)
+            if (queryRes.rows.length === 0) {
+                return 0;
+            }
+            return Number(queryRes.rows[0].users_count);
+        }
+        catch (err) {
+            console.error(err);;
             throw (err);
         }
     }
