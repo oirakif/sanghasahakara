@@ -32,12 +32,12 @@ class JWTUtils {
         if (!decodedToken) {
             return res.status(401).json({ message: 'Unauthorized' });
         }
-        if(!decodedToken.jti){
-            return res.status(401).json({ message: 'Unauthorized' });   
+        if (!decodedToken.jti) {
+            return res.status(401).json({ message: 'Unauthorized' });
         }
         const blacklisted: string = await this.redisClientRepository.Get(decodedToken.jti as string)
         if (blacklisted) {
-            return res.status(401).json({ message: 'Unauthorized' });   
+            return res.status(401).json({ message: 'Unauthorized' });
         }
 
         // Verify the JWT token
@@ -48,6 +48,7 @@ class JWTUtils {
 
             // Attach user data to request object
             req.user = user as User;
+            req.user.token = decodedToken.jti;
             next();
         });
     }
