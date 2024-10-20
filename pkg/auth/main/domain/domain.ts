@@ -140,6 +140,7 @@ class MainAuthDomain {
                 is_used: false,
                 expires_at: expiresAt,
                 created_at: currentTimestamp,
+                updated_at: currentTimestamp,
             }
             await this.usersEmailVerificationRepository.InsertUsersEmailVerification(userEmailVerification)
             const newUserSessions: UserSessions = <UserSessions>{
