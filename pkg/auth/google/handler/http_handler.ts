@@ -1,5 +1,5 @@
 // AuthController.ts
-import { Request, Router, Response } from 'express';
+import { Request, NextFunction, Router, Response } from 'express';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { JWTUtils } from '../../../utils/utils';
@@ -11,13 +11,15 @@ class GoogleOAuthHTTPHandler {
   callbackURL: string;
   jwtUtils: JWTUtils;
   googleOAuthDomain: GoogleOAuthDomain;
+  frontendURL: string;
 
-  constructor(clientID: string, clientSecret: string, callbackURL: string, jwtUtils: JWTUtils, googleOAuthDomain: GoogleOAuthDomain) {
+  constructor(clientID: string, clientSecret: string, callbackURL: string, jwtUtils: JWTUtils, googleOAuthDomain: GoogleOAuthDomain, frontendURL: string) {
     this.clientID = clientID;
     this.clientSecret = clientSecret;
     this.callbackURL = callbackURL;
     this.jwtUtils = jwtUtils;
     this.googleOAuthDomain = googleOAuthDomain;
+    this.frontendURL = frontendURL;
   }
 
   private initializePassport() {
@@ -26,40 +28,65 @@ class GoogleOAuthHTTPHandler {
       clientSecret: this.clientSecret,
       callbackURL: this.callbackURL
     }, async (accessToken, refreshToken, profile, done) => {
-      const email = profile.emails && profile.emails[0] ? profile.emails[0].value : undefined;
+      const email = profile.emails?.[0]?.value || '';
+      const displayName = profile.displayName || '';
+  
+      // Get user ID and token
+      const [userID, token] = await this.googleOAuthDomain.ProcessGoogleOAuthLogin(email, displayName);
+  
       const user: Express.User = {
+        id: userID,
         email,
-        displayName: profile.displayName,
+        displayName,
+        token // Include token for later use
       };
-      done(null, user)
+  
+      done(null, user);
     }));
 
-    // Serialize user to store in session
-    passport.serializeUser((user, done) => {
-      done(null, user); // Store only user ID
+    passport.serializeUser((user: Express.User, done) => {
+      done(null, user);
     });
 
-    // Deserialize user from session
     passport.deserializeUser(async (user: Express.User, done) => {
-      // Here you can fetch the user from the database by ID
-      const [userID, token] = await this.googleOAuthDomain.ProcessGoogleOAuthLogin(user.email as string, user.displayName as string)
-      user.id = userID;
-      user.token = token
-      done(null, user); // Pass the user object
+      done(null, user); // Pass the entire object back, now including id and token
     });
   }
 
   public InitializeRoutes() {
     this.initializePassport();
     const router = Router();
-    router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }),);
-    router.get('/callback/google', passport.authenticate('google', { failureRedirect: '/login' }), this.handleOAuthGoogleLogin);
+    router.get('/google', (req: Request, res: Response, next: NextFunction) => {
+      const finalRedirect: string = (req.query.redirect_uri as string) || '/default-portal';
+
+      passport.authenticate('google', {
+        scope: ['profile', 'email'],
+        state: finalRedirect
+      })(req, res, next);
+    });
+
+    router.get('/callback/google', (req: Request, res: Response, next: NextFunction) => {
+      // Handle the Google authentication response
+      passport.authenticate('google', { failureRedirect: this.frontendURL }, (err, user, info) => {
+        if (err) return next(err);
+        if (!user) return res.redirect(this.frontendURL); // Redirect if user is not found
+
+        // Store user info in the session
+        req.logIn(user, (err) => {
+          if (err) return next(err);
+
+          // Now, `req.user` should have the user information
+          this.handleOAuthGoogleLogin(req, res);
+        });
+      })(req, res, next);
+    });
     return router;
   }
 
   private handleOAuthGoogleLogin(req: Request, res: Response) {
-
-    res.redirect(`/user/profile?access_token=${req.user?.token}`);
+    const finalRedirect = req.query.state || this.frontendURL;
+    const token = req.user?.token;
+    res.redirect(`${finalRedirect}?access_token=${token}`);
   }
 }
 

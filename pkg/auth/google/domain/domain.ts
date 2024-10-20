@@ -1,11 +1,6 @@
 import UserRepository from '../../../user/repository/repository';
 import { UserFilterQuery, User } from '../../../user/model/model';
-import { DBUtils, JWTUtils, SHA256hash } from '../../../utils/utils'
-import { ErrorResponse, SuccessResponse } from '../../../wrapper/wrapper'
-import EmailRepository from '../../../email/repository/repository';
-import UsersEmailVerificationRepository from '../../../users-email-verification/repository/repository';
-import moment from 'moment';
-import { UsersEmailVerification, UsersEmailVerificationFilterQuery } from '../../../users-email-verification/model/model';
+import { DBUtils, JWTUtils, NewUUID } from '../../../utils/utils'
 import UserSessionsRepository from '../../../user-session/repository/repository';
 import { UserSessions } from '../../../user-session/model/model';
 
@@ -63,7 +58,8 @@ class GoogleOAuthDomain {
             }
             await this.userSessionsRepository.InsertUserSession(newUserSessions)
             await this.dbUtils.CommitTx();
-            const token = this.jwtUtils.GenerateToken(retrievedUser[0], '1d');
+            const jti = NewUUID();
+            const token = this.jwtUtils.GenerateToken({...retrievedUser[0],jti}, '1d');
             return [newUserID, token];
         } catch (error) {
             await this.dbUtils.RollbackTx();

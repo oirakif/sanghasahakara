@@ -106,9 +106,6 @@ app.use(session({
   saveUninitialized: true
 }));
 
-app.use(passport.initialize());
-app.use(passport.session());
-
 
 app.use(
   '/auth',
@@ -117,13 +114,18 @@ app.use(
     process.env.GOOGLE_CLIENT_SECRET as string,
     process.env.GOOGLE_OAUTH_CALLBACK_URL as string,
     jwtUtils,
-    googleOAuthDomain).
+    googleOAuthDomain,
+    process.env.FRONTEND_URL as string).
     InitializeRoutes(),
 
   new MainAuthHTTPHandler(mainAuthDomain, jwtUtils).
     InitializeRoutes()
 );
 app.use('/users', new UserHTTPHandler(new UserDomain(userRepository, dbUtils, userSessionsRepository), jwtUtils).InitiateRoutes())
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
