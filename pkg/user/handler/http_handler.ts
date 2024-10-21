@@ -74,9 +74,9 @@ class UserHTTPHandler {
   }
 
   private async getUserStatistics(req: Request, res: Response) {
-    const { active_sessions_interval: activeSessionsInterval } = req.query
-    const { error } = GetUserStatisticsQuerySchema.validate({ activeSessionsInterval });
-    const activeSessionIntervalInt = parseInt(activeSessionsInterval as string)
+    const { active_sessions_interval } = req.query
+    const { error } = GetUserStatisticsQuerySchema.validate({ active_sessions_interval });
+    const activeSessionIntervalInt = parseInt(active_sessions_interval as string)
     if (error) {
       const message = {
         error: true,

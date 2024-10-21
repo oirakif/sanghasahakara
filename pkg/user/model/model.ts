@@ -34,7 +34,7 @@ interface User {
 }
 
 const GetUserStatisticsQuerySchema = Joi.object({
-    activeSessionsInterval: Joi.number()
+    active_sessions_interval: Joi.number()
         .required().
         min(1)
 })

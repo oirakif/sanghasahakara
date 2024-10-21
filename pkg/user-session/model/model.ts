@@ -15,8 +15,14 @@ interface UserSessions{
     created_at?:Date;
 }
 
+interface PopulatedUserSessions{
+    day?: Date;
+    active_users_count?: number;
+}
+
 export {
     UserSessionsFilterQuery,
-    UserSessions
+    UserSessions,
+    PopulatedUserSessions
 }
 

@@ -3,6 +3,7 @@ import { UserFilterQuery } from '../model/model';
 import { DBUtils, CalculateOffset } from '../../utils/utils'
 import { ErrorResponse, SuccessResponse } from '../../wrapper/wrapper'
 import UserSessionsRepository from '../../user-session/repository/repository';
+import { PopulatedUserSessions } from '../../user-session/model/model';
 
 class UserDomain {
     userRepository: UserRepository;
@@ -86,22 +87,24 @@ class UserDomain {
         const filterQuery: UserFilterQuery = <UserFilterQuery>{}
 
         try {
-            const totalUsersCount:number = await this.userRepository.CountUsers(filterQuery)
+            const totalUsersCount: number = await this.userRepository.CountUsers(filterQuery)
             filterQuery.countIndex = '*';
-            const distinctUsersCount:number = await this.userRepository.CountUsers(filterQuery)
-            const avgActiveUsersCount:number = await this.userSessionsRepository.AggregateDailyActiveUser(activeSessionsInterval)
+            const distinctUsersCount: number = await this.userRepository.CountUsers(filterQuery)
+            const avgActiveUsersCount: number = await this.userSessionsRepository.AggregateActiveUser(activeSessionsInterval)
+            const populatedUserSessions: PopulatedUserSessions[] = await this.userSessionsRepository.PopulateActiveUser(activeSessionsInterval)
 
-            
+
             const data: object = {
                 totalUsersCount,
                 distinctUsersCount,
-                avgActiveUsersCount
-            }
+                avgActiveUsersCount,
+                activeUsersMetrics: populatedUserSessions
+            };
             return [<SuccessResponse>{
                 message: 'users list',
                 statusCode: 200,
                 data
-            }, <ErrorResponse>{}]
+            }, <ErrorResponse>{}];
         }
         catch (err) {
             return [

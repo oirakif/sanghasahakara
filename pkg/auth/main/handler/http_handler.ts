@@ -57,9 +57,20 @@ class MainAuthHTTPHandler {
   }
 
   private async handleLogout(req: Request, res: Response) {
-    const id = req.user?.id;
-    const jti = req.user?.token;
-    const [successWrapper, errWrapper] = await this.mainAuthDomain.LogoutUser(jti as string, id as number)
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ message: 'unauthorized' });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const decodedToken = jwt.decode(token) as { jti?: string; exp?: number } | null;
+    if (!decodedToken || !decodedToken.jti || !decodedToken.exp) {
+      return res.status(401).json({ message: 'unauthorized' });
+    }
+
+    const [successWrapper, errWrapper] = await this.mainAuthDomain.LogoutUser(decodedToken.jti, decodedToken.exp)
     if (errWrapper.statusCode) {
       res.
         status(errWrapper.statusCode).

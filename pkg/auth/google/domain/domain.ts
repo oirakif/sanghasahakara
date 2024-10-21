@@ -32,6 +32,10 @@ class GoogleOAuthDomain {
             const retrievedUser = await this.userRepository.GetUsersList(filterQuery)
             const jti = NewUUID();
             if (retrievedUser.length > 0) {
+                if (retrievedUser[0].display_name != displayName) {
+                    retrievedUser[0].display_name = displayName;
+                    await this.userRepository.UpdateUser(filterQuery, retrievedUser[0])
+                }
                 return [retrievedUser[0].id, this.jwtUtils.GenerateToken({ ...retrievedUser[0], jti }, '1d')]
             }
 

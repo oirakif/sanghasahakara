@@ -1,5 +1,5 @@
 import pg from 'pg'
-import { UserSessionsFilterQuery, UserSessions } from '../model/model';
+import { UserSessionsFilterQuery, UserSessions, PopulatedUserSessions } from '../model/model';
 
 class UserSessionsRepository {
     DBClient: pg.Pool;
@@ -65,7 +65,7 @@ class UserSessionsRepository {
         }
     }
 
-    public async AggregateDailyActiveUser(daysInterval: number): Promise<number> {
+    public async AggregateActiveUser(daysInterval: number): Promise<number> {
         const query = `
         SELECT AVG(active_users) AS average_active_users
         FROM (
@@ -81,6 +81,34 @@ class UserSessionsRepository {
             }
 
             return Math.floor(queryRes.rows[0].average_active_users) as number;
+        }
+        catch (err) {
+            console.error(err);;
+            throw (err);
+        }
+    }
+
+    public async PopulateActiveUser(daysInterval: number): Promise<PopulatedUserSessions[]> {
+        const query = `
+        SELECT
+            DATE(last_active) AS day,
+            COUNT(DISTINCT user_id) AS active_users_count
+        FROM
+            user_sessions us 
+        WHERE
+            last_active >= NOW() - INTERVAL '${daysInterval} days'
+        GROUP BY
+            DATE(last_active)
+        ORDER BY
+            day ASC;
+      `;
+        try {
+            const queryRes = await this.DBClient.query(query)
+            if (queryRes.rows.length === 0) {
+                return [];
+            }
+            const result: PopulatedUserSessions[] = queryRes.rows
+            return result;
         }
         catch (err) {
             console.error(err);;
