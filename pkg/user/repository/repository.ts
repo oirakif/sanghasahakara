@@ -11,7 +11,7 @@ class UserRepository {
     public async GetUsersList(filterQuery: UserFilterQuery): Promise<User[]> {
         const args: any[] = []
         const whereClauses: string[] = []
-        let query = `SELECT id,email,is_email_verified,account_type,status,login_count,logout_count,created_at,updated_at FROM users u`
+        let query = `SELECT id,email,display_name,is_email_verified,account_type,status,login_count,logout_count,created_at,updated_at FROM users u`
         if (filterQuery.id) {
             whereClauses.push(`id = $${whereClauses.length + 1}`);
             args.push(filterQuery.id);
@@ -25,6 +25,11 @@ class UserRepository {
         if (filterQuery.email) {
             whereClauses.push(`email = $${whereClauses.length + 1}`);
             args.push(filterQuery.email);
+        }
+
+        if (filterQuery.display_name) {
+            whereClauses.push(`display_name LIKE $${whereClauses.length + 1}`);
+            args.push(`%${filterQuery.display_name}%`);
         }
 
         if (filterQuery.is_verified) {
