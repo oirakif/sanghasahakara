@@ -38,7 +38,7 @@ class GoogleOAuthHTTPHandler {
         email,
         displayName,
         token // Include token for later use
-      }; 
+      };
   
       done(null, user);
     }));
