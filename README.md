@@ -52,5 +52,17 @@ npm run build && npm start
 ```
 * Enjoy !
 
+### Endpoints
+1. /auth/google -> google OAuth login
+2. /auth/callback/google -> google OAuth callback endpoint
+3. /auth/main/login -> login endpoint (username,password)
+4. /auth/main/logout -> logout endpoint (need token)
+5. /auth/main/register -> register endpoint (username,password,display_name)
+6. /auth/main/email/verify (query param user_id,token)
+7. /auth/main/password/reset (oldPassword,newPassword)
+8. /users/profile/me (token)
+9. /users/list
+10. /users/statistics (query param activeSessionsInterval)
+
 ### Future Updates
 * Frontend integration
