@@ -15,7 +15,7 @@ class UserSessionsRepository {
         if (filterQuery.countIndex) {
             countIndex = filterQuery.countIndex
         }
-        let query = `SELECT COUNT(${countIndex}) AS userSessionsCount FROM user_sessions`
+        let query = `SELECT CAST(COUNT(${countIndex} AS INTEGER) AS userSessionsCount FROM user_sessions`
         if (filterQuery.id) {
             whereClauses.push(`id = $${whereClauses.length + 1}`);
             args.push(filterQuery.id);
@@ -38,7 +38,7 @@ class UserSessionsRepository {
             if (queryRes.rows.length === 0) {
                 return 0;
             }
-            return Number(queryRes.rows[0].usersCount);
+            return queryRes.rows[0].usersCount;
         }
         catch (err) {
             console.error(err);;
@@ -92,7 +92,7 @@ class UserSessionsRepository {
         const query = `
         SELECT
             DATE(last_active) AS day,
-            COUNT(DISTINCT user_id) AS active_users_count
+            CAST(COUNT(DISTINCT user_id) AS INTEGER) AS active_users_count
         FROM
             user_sessions us 
         WHERE
