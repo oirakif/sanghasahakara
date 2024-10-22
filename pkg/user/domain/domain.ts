@@ -3,7 +3,7 @@ import { UserFilterQuery } from '../model/model';
 import { DBUtils, CalculateOffset } from '../../utils/utils'
 import { ErrorResponse, SuccessResponse } from '../../wrapper/wrapper'
 import UserSessionsRepository from '../../user-session/repository/repository';
-import { PopulatedUserSessions } from '../../user-session/model/model';
+import { PopulatedUserSessions, UserSessionsFilterQuery } from '../../user-session/model/model';
 
 class UserDomain {
     userRepository: UserRepository;
@@ -89,7 +89,12 @@ class UserDomain {
         try {
             const totalUsersCount: number = await this.userRepository.CountUsers(filterQuery)
             filterQuery.countIndex = '*';
-            const distinctUsersCount: number = await this.userRepository.CountUsers(filterQuery)
+            const userSessionFilterQuery: UserSessionsFilterQuery = <UserSessionsFilterQuery>{
+                countIndex: 'distinct user_id',
+                customFilters: ['DATE(last_active)=?'],
+                customArgs: [new Date().toISOString().split('T')[0]]
+            }
+            const distinctUsersCount: number = await this.userSessionsRepository.CountUserSessions(userSessionFilterQuery)
             const avgActiveUsersCount: number = await this.userSessionsRepository.AggregateActiveUser(activeSessionsInterval)
             const populatedUserSessions: PopulatedUserSessions[] = await this.userSessionsRepository.PopulateActiveUser(activeSessionsInterval)
 

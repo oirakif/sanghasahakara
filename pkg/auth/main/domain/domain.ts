@@ -6,7 +6,7 @@ import EmailRepository from '../../../email/repository/repository';
 import UsersEmailVerificationRepository from '../../../users-email-verification/repository/repository';
 import moment from 'moment';
 import { UsersEmailVerification, UsersEmailVerificationFilterQuery } from '../../../users-email-verification/model/model';
-import { UserSessions } from '../../../user-session/model/model';
+import { UserSessions, UserSessionsFilterQuery } from '../../../user-session/model/model';
 import UserSessionsRepository from '../../../user-session/repository/repository';
 import RedisRepository from '../../../redis/repository/repository';
 
@@ -58,7 +58,16 @@ class MainAuthDomain {
             }
             const targetUser = retrievedUser[0]
             targetUser.login_count = targetUser.login_count + 1;
+            targetUser.updated_at = new Date();
             await this.userRepository.UpdateUser(filterQuery, targetUser)
+
+            const UserSessionsFilterQuery: UserSessionsFilterQuery = <UserSessionsFilterQuery>{
+                user_id: retrievedUser[0].id
+            }
+            const userSessionsUpdatePayload: UserSessions = <UserSessions>{
+                last_active: new Date()
+            }
+            await this.userSessionsRepository.UpdateUserSession(UserSessionsFilterQuery, userSessionsUpdatePayload)
             const jti = NewUUID();
             const token = this.jwtUtils.GenerateToken({ ...retrievedUser[0], jti }, '1d')
             return [<SuccessResponse>{
@@ -82,7 +91,8 @@ class MainAuthDomain {
                 id: userID
             }
             const payload: User = <User>{
-                logoutIncrement: 1
+                logoutIncrement: 1,
+                updated_at:new Date()
             }
             await this.userRepository.UpdateUser(filter, payload)
 
