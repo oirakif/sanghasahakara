@@ -15,15 +15,15 @@ class UserSessionsRepository {
         if (filterQuery.countIndex) {
             countIndex = filterQuery.countIndex
         }
-        let query = `SELECT CAST(COUNT(${countIndex} AS INTEGER) AS userSessionsCount FROM user_sessions`
+        let query = `SELECT CAST(COUNT(${countIndex}) AS INTEGER) AS user_sessions_count FROM user_sessions`
         if (filterQuery.id) {
             whereClauses.push(`id = $${whereClauses.length + 1}`);
             args.push(filterQuery.id);
         }
 
         filterQuery.customFilters?.forEach((filter) => {
-            filter.replaceAll('?', whereClauses.length + 1)
-            whereClauses.push(`${filter} ${whereClauses.length + 1}`)
+            const replacedFilter = filter.replaceAll('?', `$${whereClauses.length + 1}`)
+            whereClauses.push(`${replacedFilter}`)
         })
 
         filterQuery.customArgs?.forEach((arg) => {
@@ -38,7 +38,8 @@ class UserSessionsRepository {
             if (queryRes.rows.length === 0) {
                 return 0;
             }
-            return queryRes.rows[0].usersCount;
+
+            return queryRes.rows[0].user_sessions_count;
         }
         catch (err) {
             console.error(err);;
@@ -55,6 +56,49 @@ class UserSessionsRepository {
             payload.created_at,
         )
 
+        try {
+            await this.DBClient.query(query, args)
+        }
+        catch (err) {
+            console.error(err);
+
+            throw (err);
+        }
+    }
+
+    public async UpdateUserSession(filterQuery: UserSessionsFilterQuery, payload: UserSessions) {
+        const args: any[] = []
+        const updateClauses: any[] = []
+        const whereClauses: any[] = []
+        let query = `UPDATE user_sessions`
+        // set update clause
+        if (payload.user_id) {
+            updateClauses.push(`user_id = $${args.length + 1}`);
+            args.push(
+                payload.user_id)
+        };
+        if (payload.last_active) {
+            updateClauses.push(`last_active = $${args.length + 1}`);
+            args.push(
+                payload.last_active)
+        };
+
+        if (args.length === 0) {
+            return 'no update payload specified';
+        }
+
+        query += ` SET ` + updateClauses.join(' , ');
+        // set where clause
+        if (filterQuery.user_id) {
+            whereClauses.push(`user_id = $${args.length + 1}`);
+            args.push(filterQuery.user_id);
+        }
+        if (filterQuery.last_active) {
+            whereClauses.push(`last_active = $${args.length + 1}`);
+            args.push(filterQuery.last_active);
+        }
+
+        query += ` WHERE ` + whereClauses.join(' AND ');
         try {
             await this.DBClient.query(query, args)
         }

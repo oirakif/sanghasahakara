@@ -65,12 +65,12 @@ class MainAuthHTTPHandler {
 
     const token = authHeader.split(" ")[1];
 
-    const decodedToken = jwt.decode(token) as { jti?: string; exp?: number } | null;
-    if (!decodedToken || !decodedToken.jti || !decodedToken.exp) {
+    const decodedToken = jwt.decode(token) as { jti?: string; id?: number } | null;
+    if (!decodedToken || !decodedToken.jti || !decodedToken.id) {
       return res.status(401).json({ message: 'unauthorized' });
     }
 
-    const [successWrapper, errWrapper] = await this.mainAuthDomain.LogoutUser(decodedToken.jti, decodedToken.exp)
+    const [successWrapper, errWrapper] = await this.mainAuthDomain.LogoutUser(decodedToken.jti, decodedToken.id)
     if (errWrapper.statusCode) {
       res.
         status(errWrapper.statusCode).
