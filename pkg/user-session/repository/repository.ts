@@ -113,9 +113,10 @@ class UserSessionsRepository {
         const query = `
         SELECT AVG(active_users) AS average_active_users
         FROM (
-          SELECT COUNT(DISTINCT user_id) AS active_users
-          FROM user_sessions us 
-          WHERE last_active >= CURRENT_DATE - INTERVAL '${daysInterval} days'
+            SELECT DATE(last_active), COUNT(DISTINCT user_id) AS active_users
+            FROM user_sessions us
+            WHERE last_active >= CURRENT_DATE - INTERVAL '${daysInterval} days'
+            GROUP BY DATE(last_active)
         ) AS daily_active_users;
       `;
         try {
