@@ -2,7 +2,7 @@ import UserRepository from '../../../user/repository/repository';
 import { UserFilterQuery, User } from '../../../user/model/model';
 import { DBUtils, JWTUtils, NewUUID } from '../../../utils/utils'
 import UserSessionsRepository from '../../../user-session/repository/repository';
-import { UserSessions } from '../../../user-session/model/model';
+import { UserSessions, UserSessionsFilterQuery } from '../../../user-session/model/model';
 
 class GoogleOAuthDomain {
     userRepository: UserRepository;
@@ -36,6 +36,15 @@ class GoogleOAuthDomain {
                     retrievedUser[0].display_name = displayName;
                     await this.userRepository.UpdateUser(filterQuery, retrievedUser[0])
                 }
+
+                const UserSessionsFilterQuery: UserSessionsFilterQuery = <UserSessionsFilterQuery>{
+                    user_id: retrievedUser[0].id
+                }
+                const userSessionsUpdatePayload: UserSessions = <UserSessions>{
+                    last_active: new Date()
+                }
+                await this.userSessionsRepository.UpdateUserSession(UserSessionsFilterQuery, userSessionsUpdatePayload)
+                await this.dbUtils.CommitTx();
                 return [retrievedUser[0].id, this.jwtUtils.GenerateToken({ ...retrievedUser[0], jti }, '1d')]
             }
 
