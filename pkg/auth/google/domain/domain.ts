@@ -34,9 +34,9 @@ class GoogleOAuthDomain {
             if (retrievedUser.length > 0) {
                 if (retrievedUser[0].display_name != displayName) {
                     retrievedUser[0].display_name = displayName;
-                    await this.userRepository.UpdateUser(filterQuery, retrievedUser[0])
                 }
-
+                retrievedUser[0].login_count = retrievedUser[0].login_count + 1;
+                await this.userRepository.UpdateUser(filterQuery, retrievedUser[0])
                 const UserSessionsFilterQuery: UserSessionsFilterQuery = <UserSessionsFilterQuery>{
                     user_id: retrievedUser[0].id
                 }
